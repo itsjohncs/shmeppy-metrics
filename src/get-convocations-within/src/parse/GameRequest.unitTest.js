@@ -15,9 +15,8 @@ describe("makeGameRequest", function() {
             requestId: "a",
             datetime: new Date("5/13/2019 7:42:00 PM"),
             message: (
-                "Successfully authenticated as: { accountId: 'z',#012" +
-                "  displayName: 'User',#012" +
-                "  email: 'username@gmail.invalid' }")
+                `Client added to client DB: {"isAdmin": false,` +
+                `"account":{"accountId":"z"}}`)
         }),
         new LogRecord({
             requestId: "a",
@@ -33,6 +32,7 @@ describe("makeGameRequest", function() {
     it("datapoints are extracted correctly", function() {
         const gameRequest = makeGameRequest(RECORDS);
         assert.strictEqual(gameRequest.gameId, 1);
+        assert.strictEqual(gameRequest.isAdmin, false);
         assert.strictEqual(gameRequest.accountId, "z");
         assert.strictEqual(gameRequest.requestId, "a");
         assert.strictEqual(gameRequest.websocketOpenedDatetime.getTime(),
