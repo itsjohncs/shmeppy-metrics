@@ -1,3 +1,5 @@
 src/get-logs-within/target/
 
+src/get-convocations-within/node_modules/
+
 build/
