@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+set -eu
+shopt -s failglob
+
 # There's probably a better way to cd into this script's actual directory,
 # even when executed through a symlink, but I don't know it.
 SCRIPT_DIR="$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )"
