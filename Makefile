@@ -19,10 +19,10 @@ build/build-convocations-aggregate: $(shell find src/build-convocations-aggregat
 	echo
 
 build/get-logs-within: src/get-logs-within/target/release/get-logs-within | build
-	echo
+	ln -fs src/get-logs-within/target/release/get-logs-within build/get-logs-within
 
 src/get-logs-within/target/release/get-logs-within: $(shell find src/get-logs-within/src) src/get-logs-within/Cargo.toml
-	cd src/get-logs-within; carge build --release
+	cd src/get-logs-within; cargo build --release
 
 build/get-convocations-within: src/get-convocations-within/package.json $(shell find src/get-convocations-within/ -name '*.js') | build
 	echo
