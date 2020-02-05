@@ -8,7 +8,7 @@ shopt -s failglob
 SCRIPT_DIR="$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )"
 if [ -L "${BASH_SOURCE[0]}" ]; then
 	REAL_SOURCE="$(readlink "${BASH_SOURCE[0]}")"
-	cd "$(dirname "$SCRIPT_DIR/$REAL_SOURCE")"
+	cd "$(dirname "$REAL_SOURCE")"
 else
 	cd "$SCRIPT_DIR"
 fi

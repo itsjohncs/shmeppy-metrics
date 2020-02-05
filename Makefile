@@ -27,14 +27,14 @@ build/build-convocations-aggregate: $(shell find src/build-convocations-aggregat
 
 
 build/get-logs-within: src/get-logs-within/target/release/get-logs-within | build
-	ln -fs ../$< $@
+	ln -fs $(shell pwd)/$< $@
 
 src/get-logs-within/target/release/get-logs-within: $(shell find src/get-logs-within/src) src/get-logs-within/Cargo.toml
 	cd src/get-logs-within; cargo build --release
 
 
 build/get-convocations-within: src/get-convocations-within/get-convocations-within.sh | build
-	ln -fs ../$< $@
+	ln -fs $(shell pwd)/$< $@
 
 src/get-convocations-within/get-convocations-within.sh: src/get-convocations-within/node_modules
 	touch -c $@
