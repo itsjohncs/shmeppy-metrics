@@ -1,34 +1,28 @@
 #!/usr/bin/env bash
 
-# This script takes in two args (besides the build directory): N and FILE.
-# First it uses tail to skip N bytes of FILE and then pipes the remaining bytes
-# (which will start at the (N+1)th byte) into get-range (who will then print to
-# stdout. It will also check that the Nth byte is a newline and that the last
-# byte is also a newline.
+# This script takes in two args: N and FILE. First it uses tail to skip N bytes
+# of FILE and then pipes the remaining bytes (which will start at the (N+1)th
+# byte) into get-range (who will then print to stdout.
 
 set -eu
 shopt -s failglob
 
-if [ $# -ne 3 ]; then
-    echo "$0 BUILD_DIR N FILE"
+if ! command -v get-range > /dev/null; then
+	echo "Cannot find get-range. Ensure build directory is in PATH." >&2
+	exit 1
+fi
+
+if [ $# -ne 2 ]; then
+    echo "$0 N FILE" >&2
     exit 1
 fi
 
-BUILD_DIR="$1"
-N="$2"
-FILE="$3"
+N="$1"
+FILE="$2"
 
-# These two checks work together to ensure we never build the cache from a raw
-# log file that was only partially downloaded. All log entries in the raw logs
-# must be complete.
-if [ "$N" -ne "0" ] && [ "$(tail -c "+$N" "$FILE" | head -c 1)" != $'\n' ]; then
-	echo "${N}th byte of $FILE is not a newline." >&2
-	exit 1
-fi
-
-if [ "$(tail -c 1 "$FILE")" != $'\n' ]; then
-	echo "$FILE does not end with a newline." >&2
-	exit 1
-fi
-
-tail -c "+$N" "$FILE" | "$BUILD_DIR/get-range"
+# This is GNU's tail because my system's tail is INCREDIBLY slower. I timed it
+# vs cat on shmeppy-0's big log file and I never had the patience to actually
+# let tail finish because it was taking over a minute (whereas cat completes
+# in a quarter of a second). Dissapointing. gtail is still slower than cat by
+# about 10 times, but it's still acceptably fast.
+gtail -c "+$N" "$FILE" | get-range
