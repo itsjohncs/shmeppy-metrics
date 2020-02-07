@@ -12,7 +12,7 @@ serve: build/site/convocations.json build/site/index.htm
 # regnereated. The `build-convocations-aggregate` program does its own
 # dependency analysis to figure that out and is designed to be quite fast.
 build/site/convocations.json: ALWAYS_BUILD build/build-convocations-aggregate | build/site
-	build/build-convocations-aggregate ...
+	env "PATH=$(shell pwd)/build/:$(PATH)" build/build-convocations-aggregate
 
 build/site/index.htm: | build/site
 	echo
@@ -20,8 +20,8 @@ build/site/index.htm: | build/site
 build/site: | build
 	-mkdir $@
 
-build/build-convocations-aggregate: $(shell find src/build-convocations-aggregate -name '*.py') build/get-logs-within build/get-convocations-within | build
-	echo
+build/build-convocations-aggregate: src/build-convocations-aggregate/src/main.py $(shell find src/build-convocations-aggregate/src) build/get-range build/get-logs-within build/get-convocations-within | build
+	ln -fs $(shell pwd)/$< $@
 
 
 ###############################################

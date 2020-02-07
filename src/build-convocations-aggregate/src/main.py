@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-import subprocess
-import os.path
 import datetime
+import json
+import os
+import subprocess
+import sys
 
 
-def date_to_string(date):
-    return date.strftime("%Y-%m-%d")
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
 def get_date_range_of_new_logs(master_file_path, raw_logs_dir):
@@ -19,7 +20,90 @@ def get_date_range_of_new_logs(master_file_path, raw_logs_dir):
 
     master_file_path won't be updated.
     """
-    pass
+    try:
+        with open(master_file_path, "rb") as f:
+            last_seen_sizes = json.load(f)
+    except FileNotFoundError as e:
+        last_seen_sizes = {}
+
+    raw_log_paths = [
+        os.path.join(raw_logs_dir, name)
+        for name in os.listdir(raw_logs_dir)
+        if name.endswith(".log")
+    ]
+
+    # Check that no log files have been deleted
+    deleted_log_files = set(last_seen_sizes.keys()) - set(raw_logs_dir)
+    if deleted_log_files:
+        raise AssertionError(
+            f"Log files have been deleted since last run: {deleted_log_files}")
+
+    children = []
+    for path in raw_log_paths:
+        last_seen_size = last_seen_sizes.get(path, 0)
+
+        # (Roughly) check that no log entries have been deleted. It still
+        # could've been modified that some log entries were lost but the total
+        # file size grew. We have no way to detect this case, but it would
+        # cause an inconsistent cache 🙃🤞.
+        current_size = os.stat(path).st_size
+        if current_size < last_seen_size:
+            raise AssertionError(
+                f"{path} has length {current_size} but expected "
+                f"{last_seen_size} or greater.")
+
+        # Parallel execution is likely to be beneficial here (despite the
+        # heavily IO bound nature of the programs) because of the heavy file
+        # caching that's likely occurring (and possible mmap usage, though that
+        # hasn't been added to the fast-log-utils as of this comment's
+        # writing).
+        children.append(subprocess.Popen(
+            [
+                os.path.join(SCRIPT_DIR, "skip-bytes-and-get-range.sh"),
+                str(last_seen_size),
+                path,
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True))
+
+    start_min = None
+    end_max = None
+    for p in children:
+        stdout, stderr = p.communicate(timeout=30)
+        if p.returncode != 0 or stderr.strip() != "":
+            raise RuntimeError(
+                f"Child exited with status {p.returncode}\n\n{stderr}")
+
+        # The script will return 0 and print nothing if there's no new log
+        # entries.
+        if stdout.strip() == "":
+            continue
+
+        raw_start, raw_end = stdout.split()
+
+        start = datetime.date.fromisoformat(raw_start)
+        if start_min is None or start < start_min:
+            start_min = start
+
+        end = datetime.date.fromisoformat(raw_end)
+        if end_max is None or end > end_max:
+            end_max = end
+
+    return start_min, end_max
+
+get_date_range_of_new_logs(
+    "/tmp/noexist",
+    "/Users/johnsullivan/personal/shmeppy-admin/shmeppy-metrics/raw-logs/")
+
+sys.exit()
+
+
+
+
+def date_to_string(date):
+    return date.strftime("%Y-%m-%d")
 
 
 def get_cache_keys(date):
