@@ -1,5 +1,5 @@
 [package]
-name = "get-logs-within"
+name = "fast-log-utils"
 version = "0.1.0"
 authors = ["brownhead <johnsullivan.pem@gmail.com>"]
 edition = "2018"
@@ -8,3 +8,11 @@ edition = "2018"
 
 [dependencies]
 memchr = "2.3.0"
+
+[[bin]]
+name = "get-logs-within"
+path = "src/get_logs_within.rs"
+
+[[bin]]
+name = "get-range"
+path = "src/get_range.rs"

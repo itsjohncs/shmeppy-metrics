@@ -24,14 +24,17 @@ build/build-convocations-aggregate: $(shell find src/build-convocations-aggregat
 	echo
 
 
-###################
-# get-logs-within #
-###################
-build/get-logs-within: src/get-logs-within/target/release/get-logs-within | build
+###############################################
+# fast-log-utils (get-logs-within, get-range) #
+###############################################
+build/get-logs-within: src/fast-log-utils/target/release/get-logs-within | build
 	ln -fs $(shell pwd)/$< $@
 
-src/get-logs-within/target/release/get-logs-within: $(shell find src/get-logs-within/src) src/get-logs-within/Cargo.toml
-	cd src/get-logs-within; cargo build --release
+build/get-range: src/fast-log-utils/target/release/get-range | build
+	ln -fs $(shell pwd)/$< $@
+
+src/fast-log-utils/target/release/get-logs-within src/fast-log-utils/target/release/get-range: $(shell find src/fast-log-utils/src) src/fast-log-utils/Cargo.toml src/fast-log-utils/Cargo.lock
+	cd src/fast-log-utils; cargo build --release
 
 
 ###########################
