@@ -28,6 +28,7 @@ fi
 
 if [ "$(tail -c 1 "$FILE")" != $'\n' ]; then
 	echo "$FILE does not end with a newline." >&2
+	exit 1
 fi
 
 tail -c "+$N" "$FILE" | "$BUILD_DIR/get-range"
