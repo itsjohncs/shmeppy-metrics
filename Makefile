@@ -1,7 +1,7 @@
 .PHONY: ALWAYS_BUILD serve test
 
 test: src/get-convocations-within/test.sh
-	find . -path '*/node_modules/*' -prune -or -name '*.sh' -print0 | xargs -0 shellcheck
+	find . -path '*/node_modules/*' -prune -or -name '*.sh' -print0 | xargs -t -0 shellcheck
 	src/get-convocations-within/test.sh
 
 
