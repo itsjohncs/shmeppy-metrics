@@ -5,12 +5,15 @@ import json
 import os
 import subprocess
 import sys
+import multiprocessing.dummy
+
+import tqdm
 
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-def get_date_range_of_new_logs(master_file_path, raw_logs_dir):
+def get_date_range_of_new_logs(last_seen_sizes_path, raw_logs_dir):
     """Return range of dates with new log entires.
 
     It's possible for there to be sparse log entries such that (for example)
@@ -21,7 +24,7 @@ def get_date_range_of_new_logs(master_file_path, raw_logs_dir):
     master_file_path won't be updated.
     """
     try:
-        with open(master_file_path, "rb") as f:
+        with open(last_seen_sizes_path, "rb") as f:
             last_seen_sizes = json.load(f)
     except FileNotFoundError as e:
         last_seen_sizes = {}
@@ -33,7 +36,7 @@ def get_date_range_of_new_logs(master_file_path, raw_logs_dir):
     ]
 
     # Check that no log files have been deleted
-    deleted_log_files = set(last_seen_sizes.keys()) - set(raw_logs_dir)
+    deleted_log_files = set(last_seen_sizes.keys()) - set(raw_log_paths)
     if deleted_log_files:
         raise AssertionError(
             f"Log files have been deleted since last run: {deleted_log_files}")
@@ -93,111 +96,99 @@ def get_date_range_of_new_logs(master_file_path, raw_logs_dir):
 
     return start_min, end_max
 
-get_date_range_of_new_logs(
-    "/tmp/noexist",
-    "/Users/johnsullivan/personal/shmeppy-admin/shmeppy-metrics/raw-logs/")
 
-sys.exit()
-
-
-
-
-def date_to_string(date):
-    return date.strftime("%Y-%m-%d")
-
-
-def get_cache_keys(date):
-    return [
-        date - datetime.timedelta(days=1),
-        date,
-        date + datetime.timedelta(days=1),
+def refresh_last_seen_sizes(cache_dir, raw_logs_dir):
+    raw_log_paths = [
+        os.path.join(raw_logs_dir, name)
+        for name in os.listdir(raw_logs_dir)
+        if name.endswith(".log")
     ]
+    last_seen_sizes = {path: os.stat(path).st_size for path in raw_log_paths}
+    with open(os.path.join(cache_dir, "last-seen-sizes.json"), "w") as f:
+        json.dump(last_seen_sizes, f)
 
-def date_in_range(date, start, end):
-    return start <= date <= end
 
-
-def build_cache():
-    start_inclusive, end_inclusive = (
-        get_date_range_of_new_logs(master_file_path, raw_logs_dir))
-
+def get_dates_to_build(cache_dir, raw_logs_dir):
     dates_to_build = set()
 
+    # This is an inclusive range of dates that we have new logs for
+    start, end_inclusive = get_date_range_of_new_logs(
+        os.path.join(cache_dir, "last-seen-sizes.json"),
+        raw_logs_dir)
+
+    # We don't have any new log entries since the last rebuild
+    if start is None and end_inclusive is None:
+        return dates_to_build
+
     # Get all the dates to rebuild
-    for date in all_dates_in(cache_dir):
-        if any(start_inclusive <= d <= end_inclusive
-               for d in get_cache_keys(date_from_path(file_path))):
-            dates_to_rebuild.add(date)
+    for name in os.listdir(cache_dir):
+        if name == "last-seen-sizes.json" or not name.endswith(".json"):
+            continue
 
-    # Get all the dates in the range
-    dates_to_build.extend(dates_in(start_inclusive, end_inclusive))
+        date = datetime.date.fromisoformat(name[:-len(".json")])
+        cache_keys = [
+            date - datetime.timedelta(days=1),
+            date,
+            date + datetime.timedelta(days=1),
+        ]
+        if any(start <= k <= end_inclusive for k in cache_keys):
+            dates_to_build.add(date)
 
-    build_em()
+    # Get all the dates in the range of new log entries we have
+    i = start
+    while i <= end_inclusive:
+        dates_to_build.add(i)
+        i += datetime.timedelta(days=1)
 
-
-
-def should_build_cache_entry(date, raw_logs_dir, cache_dir):
-    """
-
-    Every time the cache is updated, we note the names of the log files that we
-    used to update it, and the sizes of those log files. Because log files are
-    assumed to be unique, append-only, and never deleted, this lets us
-    determine the date range we have new log entries for easily.
-
-    Each cache entry has a date as its filename. A cache entry is
-    invalidated every time we get a new log entry with a timestamp for that
-    date, or the days surrounding it. So each cache entry kind of has three
-    "keys": its date from its filename, the day before it, and the day after
-    it.
-
-    The process goes: (1) determine the range of dates we have new log entries
-    for, (2) rebuild any existing log entries that has a key in that range,
-    (3) build cache entries of all dates in that range (notice that the date
-    range of entries we rebuild can be wider than the date range of entries
-    we'd build), (4) "atomically" (to the best of my ability, mac is shitty at
-    atomic FS operations) update the master file containing the names of log
-    files and their sizes.
-
-    This process allows the cache to become inconsistent if it fails partway
-    through. But in that case, the master file's file sizes (or set of file
-    names) will not match what's on the file system. So to ensure we never read
-    inconsistent data, we just have to be careful to never read from the cache
-    when the master file is out of date.
-    """
-
-    # Assumptions:
-    #  * Raw logs are append-only
-    #  * Raw logs are ordered such that log message X has no log message Y such
-    #    that all of the following are true: (1) Y appears in the same file as
-    #    X, (2) Y appears before X in that file, and (3) Y's timestamp is
-    #    strictly more than 24 hours before X's timestamp (careful here, 24
-    #    hours is not necessarily 1 day because time sucks, though that
-    #    consideration may not come into play in practice since this assumption
-    #    is wishy-washy anyways and not actually built on any guarentees of the
-    #    application).
-    # I'm tempted to peek the first and last day in each raw log and use that
-    # as inputs as opposed to each raw log's modification timestamp. How would
-    # I use those inputs though?
+    return dates_to_build
 
 
-def cache_convocations_for_day(date, build_dir, raw_logs_dir, cache_dir):
-    helper_script_path = os.path.join(
-        os.path.dirname(os.path.realpath(__file__)),
-        "cache-convocations-for-day.sh")
+def build_cache_for_day(date, cache_dir, raw_logs_dir):
     subprocess.run(
         [
-            helper_script_path,
-            build_dir,
+            os.path.join(SCRIPT_DIR, "build-cache-for-day.sh"),
             raw_logs_dir,
-            date_to_string(date - datetime.timedelta(days=1)),
-            date_to_string(date),
-            date_to_string(date + datetime.timedelta(days=1)),
-            os.path.join(cache_dir, date_to_string(date) + ".json"),
-        ], check=True, timeout=60)
+            os.path.join(cache_dir, f"{date.isoformat()}.json"),  # output file
+            date.isoformat(),  # day
+            (date + datetime.timedelta(days=1)).isoformat(),  # surrounding_day
+            (date - datetime.timedelta(days=1)).isoformat(),  # surrounding_day
+        ], check=True, timeout=60*5)
 
 
-cache_convocations_for_day(
-    datetime.date(2020, 1, 1),
-    "/Users/johnsullivan/personal/shmeppy-metrics/build",
-    "/Users/johnsullivan/personal/shmeppy-admin/shmeppy-metrics/raw-logs",
-    "/tmp/testcache")
+def maybe_update_cache(cache_dir, raw_logs_dir):
+    dates_to_build = get_dates_to_build(cache_dir, raw_logs_dir)
+
+    if dates_to_build:
+        pool = multiprocessing.dummy.Pool()
+        for _ in tqdm.tqdm(
+                pool.imap_unordered(
+                    lambda d: build_cache_for_day(d, cache_dir, raw_logs_dir),
+                    dates_to_build),
+                total=len(dates_to_build),
+                desc="updating cache"):
+            pass
+
+
+def create_aggregate(aggregate_path, cache_dir):
+    cache_paths = [(name, os.path.join(cache_dir, name))
+                   for name in os.listdir(cache_dir)
+                   if name != "last-seen-sizes.json" and
+                      name.endswith(".json")]
+
+    aggregate = {}
+    for name, path in cache_paths:
+        with open(path, "r") as f:
+            aggregate[name[:-len(".json")]] = json.load(f)
+
+    with open(aggregate_path, "w") as f:
+        json.dump(aggregate, f)
+
+def main(aggregate_path, cache_dir, raw_logs_dir):
+    maybe_update_cache(cache_dir, raw_logs_dir)
+    refresh_last_seen_sizes(cache_dir, raw_logs_dir)
+    create_aggregate(aggregate_path, cache_dir)
+
+
+
+if __name__ == "__main__":
+    main(*sys.argv[1:])

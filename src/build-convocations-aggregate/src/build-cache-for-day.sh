@@ -3,23 +3,19 @@
 set -eu
 shopt -s failglob
 
-if [ $# -ne 6 ]; then
-    echo "$0 BUILD_DIR RAW_LOGS_DIR DAY_BEFORE DAY DAY_AFTER OUTPUT_FILE"
+if [ $# -lt 3 ]; then
+    echo "$0 RAW_LOGS_DIR OUTPUT_FILE DAY [SURROUNDING_DAY [SURROUNDING_DAY...]]"
     exit 1
 fi
 
-BUILD_DIR="$1"
-RAW_LOGS_DIR="$2"
-DAY_BEFORE="$3"
-DAY="$4"
-DAY_AFTER="$5"
-OUTPUT_FILE="$6"
+RAW_LOGS_DIR="$1"
+OUTPUT_FILE="$2"
+DAYS=("${@:3}")
 
 TEMP_FILE="$(mktemp)"
 
-"$BUILD_DIR/get-logs-within" \
-    "$DAY_BEFORE" "$DAY" "$DAY_AFTER" -- "$RAW_LOGS_DIR"/*.log |
-    "$BUILD_DIR/get-convocations-within" "$DAY" > "$TEMP_FILE"
+get-logs-within "${DAYS[@]}" -- "$RAW_LOGS_DIR"/*.log |
+    get-convocations-within "${DAYS[0]}" > "$TEMP_FILE"
 
 # mv isn't atomic on mac os x, as (per its man page) it doesn't necessarily
 # use rename() even when on the same FS, which seems nonsensical. So I'm using
@@ -29,5 +25,6 @@ TEMP_FILE="$(mktemp)"
 # trust atomocity of rename() on my machine. So... this write & move pattern
 # is only increasing the safety of this script, the risk of non-atomocity is
 # kinda high. But it's good enough because if I write a corrupt output file
-# my scripts will error trying to parse it and I can just regenerate it.
+# my scripts will error trying to parse it and I can eaily regenerate it.
+# Pros and cons of using the FS as a database...
 gmv "$TEMP_FILE" "$OUTPUT_FILE"
