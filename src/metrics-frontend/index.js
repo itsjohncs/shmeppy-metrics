@@ -21,7 +21,7 @@ function main() {
 
 
 function drawUniqueGMsPerMonth(element, convocations) {
-    function getNumUniqueGMs(keys) {
+    function getUniqueGMs(keys) {
         const gmAccountIds = new Set();
         for (const k of keys) {
             for (const convocation of convocations[k]) {
@@ -31,7 +31,7 @@ function drawUniqueGMsPerMonth(element, convocations) {
             }
         }
 
-        return gmAccountIds.size;
+        return gmAccountIds;
     }
 
     const monthToKeys = new Map();
@@ -43,16 +43,45 @@ function drawUniqueGMsPerMonth(element, convocations) {
         monthToKeys.get(month).push(k);
     }
 
-    const rows = [["Month", "# of Users"]];
-    const months = Array.from(monthToKeys.keys()).sort();
-    for (const month of months) {
-        rows.push([month, getNumUniqueGMs(monthToKeys.get(month))]);
+    const monthToUniqueGMs = new Map();
+    for (const [month, keys] of monthToKeys.entries()) {
+        monthToUniqueGMs.set(month, getUniqueGMs(keys));
+    }
+
+    const rows = [[
+        "Month",
+        "6+ Month Streak GMs",
+        "5 Month Streak GMs",
+        "4 Month Streak GMs",
+        "3 Month Streak GMs",
+        "2 Month Streak GMs",
+        "No Streak GMs",
+    ]];
+    const months = Array.from(monthToUniqueGMs.keys()).sort();
+    for (let i = 0; i < months.length; ++i) {
+        const row = [months[i], 0, 0, 0, 0, 0, 0];
+        const uniqueGMs = monthToUniqueGMs.get(months[i]);
+        for (const gm of uniqueGMs) {
+            let streakCount = 1;
+            for (let j = i - 1; j > 0 && streakCount < 6; --j) {
+                if (monthToUniqueGMs.get(months[j]).has(gm)) {
+                    streakCount += 1;
+                } else {
+                    break;
+                }
+            }
+            row[row.length - streakCount] += 1;
+        }
+        rows.push(row);
     }
 
     const chart = new google.visualization.ColumnChart(element);
     chart.draw(google.visualization.arrayToDataTable(rows), {
         title: "# of Users Hosting Convocations",
-        chartArea: {width: "50%"},
+        chartArea: {
+            width: "50%",
+        },
+        height: 800,
         hAxis: {
             title: "Month",
             showTextEvery: 3,
@@ -61,5 +90,6 @@ function drawUniqueGMsPerMonth(element, convocations) {
             title: "# of Users",
             minValue: 0,
         },
+        isStacked: true,
     });
 }
