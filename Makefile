@@ -1,21 +1,25 @@
 .PHONY: ALWAYS_BUILD serve test deps
 
-test: src/get-convocations-within/test.sh
-	find . -path '*/node_modules/*' -prune -or -name '*.sh' -print0 | xargs -t -0 shellcheck
-	src/get-convocations-within/test.sh
+serve: build/site/data/convocations.json build/site/index.htm build/site/index.js
+	cd build/site && python3 -m http.server 2783 --bind 127.0.0.1
 
+build/site/index.htm: src/metrics-frontend/index.htm | build/site
+	ln -fs $(shell pwd)/$< $@
 
-serve: build/site/convocations.json build/site/index.htm
-	echo
+build/site/index.js: src/metrics-frontend/index.js | build/site
+	ln -fs $(shell pwd)/$< $@
 
+#####################
+# convocations.json #
+#####################
 # The Makefile isn't smart enough to know when convocations needs to be
 # regenereated. The `build-convocations-aggregate` program does its own
 # dependency analysis to figure that out and is designed to be quite fast.
-build/site/convocations.json: ALWAYS_BUILD build/build-convocations-aggregate build/raw-logs | build/site
+build/site/data/convocations.json: ALWAYS_BUILD build/build-convocations-aggregate build/raw-logs | build/site/data
 	env "PATH=$(shell pwd)/build/:$(PATH)" build/build-convocations-aggregate $@ build/convocations-cache build/raw-logs
 
-build/site/index.htm: | build/site
-	echo
+build/site/data: | build/site
+	-mkdir $@
 
 build/site: | build
 	-mkdir $@
@@ -53,15 +57,18 @@ src/get-convocations-within/test.sh: src/get-convocations-within/node_modules
 	touch -c $@
 
 src/get-convocations-within/node_modules: src/get-convocations-within/package.json
-	cd src/get-convocations-within; npm install . && npm update . && npm prune
+	cd src/get-convocations-within && npm install . && npm update . && npm prune
 	touch -c $@
 
+test: src/get-convocations-within/test.sh
+	find . -path '*/node_modules/*' -prune -or -name '*.sh' -print0 | xargs -t -0 shellcheck
+	src/get-convocations-within/test.sh
 
 build:
 	-mkdir $@
 
 ALWAYS_BUILD:
-	-true
+	@true
 
 deps:
 	pip3 install tqdm
