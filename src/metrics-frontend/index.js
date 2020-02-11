@@ -81,7 +81,7 @@ function drawUniqueGMsPerMonth(element, convocations) {
         chartArea: {
             width: "50%",
         },
-        height: 800,
+        height: 500,
         hAxis: {
             title: "Month",
             showTextEvery: 3,

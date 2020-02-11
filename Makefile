@@ -1,12 +1,24 @@
 .PHONY: ALWAYS_BUILD serve test deps
 
-serve: build/site/data/convocations.json build/site/index.htm build/site/index.js
+serve: build/site/data/registrations.json build/site/data/convocations.json build/site/index.htm build/site/index.js
 	cd build/site && python3 -m http.server 2783 --bind 127.0.0.1
 
 build/site/index.htm: src/metrics-frontend/index.htm | build/site
 	ln -fs $(shell pwd)/$< $@
 
 build/site/index.js: src/metrics-frontend/index.js | build/site
+	ln -fs $(shell pwd)/$< $@
+
+build/raw-logs: $(shell find build/raw-logs/ -name '*.log' || true) | build
+	touch -c $@
+
+######################
+# registrations.json #
+######################
+build/site/data/registrations.json: build/raw-logs build/build-registrations | build/site/data
+	env "PATH=$(shell pwd)/build/:$(PATH)" build/build-registrations $@ build/raw-logs/
+
+build/build-registrations: src/fast-log-utils/build-registrations.sh build/count-registrations | build
 	ln -fs $(shell pwd)/$< $@
 
 #####################
@@ -40,7 +52,10 @@ build/get-logs-within: src/fast-log-utils/target/release/get-logs-within | build
 build/get-range: src/fast-log-utils/target/release/get-range | build
 	ln -fs $(shell pwd)/$< $@
 
-src/fast-log-utils/target/release/get-logs-within src/fast-log-utils/target/release/get-range: $(shell find src/fast-log-utils/src) src/fast-log-utils/Cargo.toml src/fast-log-utils/Cargo.lock
+build/count-registrations: src/fast-log-utils/target/release/count-registrations | build
+	ln -fs $(shell pwd)/$< $@
+
+src/fast-log-utils/target/release/get-logs-within src/fast-log-utils/target/release/get-range src/fast-log-utils/target/release/count-registrations: $(shell find src/fast-log-utils/src) src/fast-log-utils/Cargo.toml src/fast-log-utils/Cargo.lock
 	cd src/fast-log-utils; cargo build --release
 
 

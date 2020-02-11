@@ -1,7 +1,7 @@
 [package]
 name = "fast-log-utils"
 version = "0.1.0"
-authors = ["brownhead <johnsullivan.pem@gmail.com>"]
+authors = ["John Sullivan <john@shmeppy.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -16,3 +16,7 @@ path = "src/get_logs_within.rs"
 [[bin]]
 name = "get-range"
 path = "src/get_range.rs"
+
+[[bin]]
+name = "count-registrations"
+path = "src/count_registrations.rs"
