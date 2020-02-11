@@ -4,6 +4,10 @@ function main() {
             .then(function(r) {
                 return r.json()
             }),
+        fetch("data/registrations.json")
+            .then(function(r) {
+                return r.json()
+            }),
         new Promise(function(resolve, reject) {
             try {
                 google.charts.load("current", {packages: ["corechart", "bar"]});
@@ -12,10 +16,13 @@ function main() {
                 reject(e);
             }
         }),
-    ]).then(function([convocations]) {
+    ]).then(function([convocations, registrations]) {
         drawUniqueGMsPerMonth(
             document.getElementById("chart_uniqueGMsPerMonth"),
             convocations);
+        drawRegistrations(
+            document.getElementById("chart_registrations"),
+            registrations);
     });
 }
 
@@ -88,8 +95,35 @@ function drawUniqueGMsPerMonth(element, convocations) {
         },
         vAxis: {
             title: "# of Users",
-            minValue: 0,
         },
         isStacked: true,
+    });
+}
+
+
+function drawRegistrations(element, registrations) {
+    const monthsInOrder = Object.keys(registrations).sort();
+
+    const rows = [["Month", "# of Registered Users"]]
+    let total = 0;
+    for (const month of monthsInOrder) {
+        total += registrations[month];
+        rows.push([new Date(month), total]);
+    }
+
+    const chart = new google.visualization.LineChart(element);
+    chart.draw(google.visualization.arrayToDataTable(rows), {
+        title: "# of Registered Users",
+        chartArea: {
+            width: "50%",
+        },
+        height: 500,
+        hAxis: {
+            title: "Month",
+            format: "yyyy-MM"
+        },
+        vAxis: {
+            title: "# of Users",
+        },
     });
 }
