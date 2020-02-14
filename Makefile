@@ -57,6 +57,7 @@ build/count-registrations: src/fast-log-utils/target/release/count-registrations
 
 src/fast-log-utils/target/release/get-logs-within src/fast-log-utils/target/release/get-range src/fast-log-utils/target/release/count-registrations: $(shell find src/fast-log-utils/src) src/fast-log-utils/Cargo.toml src/fast-log-utils/Cargo.lock
 	cd src/fast-log-utils; cargo build --release
+	touch -c $@
 
 
 ###########################
