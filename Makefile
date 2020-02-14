@@ -9,8 +9,8 @@ build/site/index.htm: src/metrics-frontend/index.htm | build/site
 build/site/index.js: src/metrics-frontend/index.js | build/site
 	ln -fs $(shell pwd)/$< $@
 
-build/raw-logs: $(shell find build/raw-logs/ -name '*.log' || true) | build
-	touch -c $@
+build/raw-logs: ALWAYS_BUILD build/raw-logs/refresh.sh | build
+	build/raw-logs/refresh.sh
 
 ######################
 # registrations.json #
