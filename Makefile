@@ -1,16 +1,27 @@
 .PHONY: ALWAYS_BUILD serve test deps
 
+# This'll build everything and is probably the target you want
 serve: build/site/data/registrations.json build/site/data/convocations.json build/site/index.htm build/site/index.js
 	cd build/site && python3 -m http.server 2783 --bind 127.0.0.1
 
+# build/raw-logs needs to be set up manually, but once its there this will
+# ensure its kept up to date. `refresh.sh` will rsync from a remote server, so
+# there's now way for make to tell whether it needs to be run (though honestly,
+# they're logs on a production server, they're probably out of date before the
+# sync completes...).
+build/raw-logs: ALWAYS_BUILD build/raw-logs/refresh.sh | build
+	build/raw-logs/refresh.sh
+
+
+############
+# frontend #
+############
 build/site/index.htm: src/metrics-frontend/index.htm | build/site
 	ln -fs $(shell pwd)/$< $@
 
 build/site/index.js: src/metrics-frontend/index.js | build/site
 	ln -fs $(shell pwd)/$< $@
 
-build/raw-logs: ALWAYS_BUILD build/raw-logs/refresh.sh | build
-	build/raw-logs/refresh.sh
 
 ######################
 # registrations.json #
@@ -20,6 +31,7 @@ build/site/data/registrations.json: build/raw-logs build/build-registrations | b
 
 build/build-registrations: src/fast-log-utils/build-registrations.sh build/count-registrations | build
 	ln -fs $(shell pwd)/$< $@
+
 
 #####################
 # convocations.json #
@@ -76,6 +88,8 @@ src/get-convocations-within/node_modules: src/get-convocations-within/package.js
 	cd src/get-convocations-within && npm install . && npm update . && npm prune
 	touch -c $@
 
+
+###########
 test: src/get-convocations-within/test.sh
 	find . -path '*/node_modules/*' -prune -or -name '*.sh' -print0 | xargs -t -0 shellcheck
 	src/get-convocations-within/test.sh
@@ -87,5 +101,9 @@ ALWAYS_BUILD:
 	@true
 
 deps:
+	# This gives me the fancy progress bar when rebuilding the convocation
+	# cache.
 	pip3 install tqdm
+
+	# This gives me the GNU utils like gxargs and gmv
 	brew install findutils
