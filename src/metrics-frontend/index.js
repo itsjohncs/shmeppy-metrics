@@ -104,11 +104,12 @@ function drawUniqueGMsPerMonth(element, convocations) {
 function drawRegistrations(element, registrations) {
     const monthsInOrder = Object.keys(registrations).sort();
 
-    const rows = [["Month", "# of Registered Users"]]
+    const rows = [["Month", "Total # of Registered Users", "# of Newly Registered Users that Day"]]
     let total = 0;
     for (const month of monthsInOrder) {
-        total += registrations[month];
-        rows.push([new Date(month), total]);
+        const numNewUsers = registrations[month];
+        total += numNewUsers;
+        rows.push([new Date(month), total, numNewUsers]);
     }
 
     const chart = new google.visualization.LineChart(element);
@@ -118,12 +119,24 @@ function drawRegistrations(element, registrations) {
             width: "50%",
         },
         height: 500,
+        series: {
+          0: {targetAxisIndex: 0},
+          1: {targetAxisIndex: 1, lineWidth: 1, color: "#AAA"}
+        },
+
         hAxis: {
             title: "Month",
             format: "yyyy-MM"
         },
-        vAxis: {
-            title: "# of Users",
-        },
+        vAxes: [
+            {
+                title: "Users",
+            },
+            {
+                title: "New Users that Day",
+                gridlines: {count: 0},
+                viewWindow: {max: 100},
+            }
+        ],
     });
 }
