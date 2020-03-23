@@ -104,7 +104,7 @@ impl Filter {
     }
 
     fn maybe_print(self: &mut Filter, out: &mut Stdout, line: &[u8]) {
-        if let Some(id) = extract_request_id(&*line) {
+        if let Some(id) = extract_request_id(line) {
             if self.printed_request_ids.contains(&id) ||
                     !self.bad_version_request_ids.contains(&id) {
                 out.write(line).unwrap();
@@ -119,7 +119,7 @@ impl Filter {
 
     fn flush(self: &mut Filter, out: &mut Stdout) {
         while let Some(line) = self.queue.pop_front() {
-            self.maybe_print(out, &*line);
+            self.maybe_print(out, &line);
         }
     }
 }
