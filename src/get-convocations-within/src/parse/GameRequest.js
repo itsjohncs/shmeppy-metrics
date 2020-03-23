@@ -4,7 +4,7 @@ import _collectData from "./_collectData.js";
 
 
 const WEBSOCKET_OPENED_RE =
-    /^Started websocket: GET \/game-socket\/([0-9]+) 1.1$/;
+    /^Started websocket: GET \/game-socket\/([0-9]+)[^ ]* 1.1$/;
 const CLIENT_ADDED_RE = /^Client added to client DB: (.+)$/;
 const WEBSOCKET_CLOSED_RE = /^Finished websocket: [0-9]+ '.*'$/;
 

@@ -4,7 +4,7 @@ function main() {
             .then(function(r) {
                 return r.json()
             }),
-        fetch("data/registrations.json")
+        fetch("data/registrations.json?cachebust")
             .then(function(r) {
                 return r.json()
             }),
@@ -106,6 +106,7 @@ function drawRegistrations(element, registrations) {
 
     const rows = [["Month", "Total # of Registered Users", "# of Newly Registered Users that Day"]]
     let total = 0;
+    console.log(monthsInOrder)
     for (const month of monthsInOrder) {
         const numNewUsers = registrations[month];
         total += numNewUsers;

@@ -26,7 +26,7 @@ build/site/index.js: src/metrics-frontend/index.js | build/site
 ######################
 # registrations.json #
 ######################
-build/site/data/registrations.json: build/raw-logs build/build-registrations | build/site/data
+build/site/data/registrations.json: ALWAYS_BUILD build/raw-logs build/build-registrations | build/site/data
 	env "PATH=$(shell pwd)/build/:$(PATH)" build/build-registrations $@ build/raw-logs/
 
 build/build-registrations: src/fast-log-utils/build-registrations.sh build/count-registrations | build
@@ -48,7 +48,7 @@ build/site/data: | build/site
 build/site: | build
 	-mkdir $@
 
-build/build-convocations-aggregate: src/build-convocations-aggregate/src/main.py $(shell find src/build-convocations-aggregate/src) build/get-range build/get-logs-within build/get-convocations-within | build build/convocations-cache
+build/build-convocations-aggregate: src/build-convocations-aggregate/src/main.py $(shell find src/build-convocations-aggregate/src) build/get-range build/get-logs-within build/get-convocations-within build/filter-bad-versions | build build/convocations-cache
 	ln -fs $(shell pwd)/$< $@
 
 build/convocations-cache: | build
@@ -67,7 +67,10 @@ build/get-range: src/fast-log-utils/target/release/get-range | build
 build/count-registrations: src/fast-log-utils/target/release/count-registrations | build
 	ln -fs $(shell pwd)/$< $@
 
-src/fast-log-utils/target/release/get-logs-within src/fast-log-utils/target/release/get-range src/fast-log-utils/target/release/count-registrations: $(shell find src/fast-log-utils/src) src/fast-log-utils/Cargo.toml src/fast-log-utils/Cargo.lock
+build/filter-bad-versions: src/fast-log-utils/target/release/filter-bad-versions | build
+	ln -fs $(shell pwd)/$< $@
+
+src/fast-log-utils/target/release/get-logs-within src/fast-log-utils/target/release/get-range src/fast-log-utils/target/release/count-registrations src/fast-log-utils/target/release/filter-bad-versions: $(shell find src/fast-log-utils/src) src/fast-log-utils/Cargo.toml src/fast-log-utils/Cargo.lock
 	cd src/fast-log-utils; cargo build --release
 	touch -c $@
 

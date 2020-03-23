@@ -15,6 +15,7 @@ DAYS=("${@:3}")
 TEMP_FILE="$(mktemp)"
 
 get-logs-within "${DAYS[@]}" -- "$RAW_LOGS_DIR"/*.log |
+	filter-bad-versions |
     get-convocations-within "${DAYS[0]}" > "$TEMP_FILE"
 
 # mv isn't atomic on mac os x, as (per its man page) it doesn't necessarily
