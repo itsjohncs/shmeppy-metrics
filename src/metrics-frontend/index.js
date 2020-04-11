@@ -20,9 +20,94 @@ function main() {
         drawUniqueGMsPerMonth(
             document.getElementById("chart_uniqueGMsPerMonth"),
             convocations);
+        drawUniqueUsersPerMonth(
+            document.getElementById("chart_uniqueUsersPerMonth"),
+            convocations);
         drawRegistrations(
             document.getElementById("chart_registrations"),
             registrations);
+    });
+}
+
+
+
+function drawUniqueUsersPerMonth(element, convocations) {
+    function getUniqueUsers(keys) {
+        const accountIds = new Set();
+        for (const k of keys) {
+            for (const convocation of convocations[k]) {
+                for (const gmAccountId of convocation.admins) {
+                    accountIds.add(gmAccountId);
+                }
+                for (const playerAccountId of convocation.players) {
+                    accountIds.add(playerAccountId);
+                }
+            }
+        }
+
+        return accountIds;
+    }
+
+    const monthToKeys = new Map();
+    for (const k of Object.keys(convocations)) {
+        const month = /^([0-9]{4}-[0-9]{2})-[0-9]{2}$/.exec(k)[1];
+        if (!monthToKeys.get(month)) {
+            monthToKeys.set(month, []);
+        }
+        monthToKeys.get(month).push(k);
+    }
+
+    const monthToUniqueAccountIds = new Map();
+    for (const [month, keys] of monthToKeys.entries()) {
+        monthToUniqueAccountIds.set(month, getUniqueUsers(keys));
+    }
+
+    const rows = [[
+        "Month",
+        "6+ Month Returning Users",
+        "5 Month Returning Users",
+        "4 Month Returning Users",
+        "3 Month Returning Users",
+        "2 Month Returning Users",
+        "New Users",
+    ]];
+    const months = Array.from(monthToUniqueAccountIds.keys()).sort();
+    const runningReturnCounts = new Map();
+    function incrementReturnCount(accountId) {
+        if (runningReturnCounts.has(accountId)) {
+            const newCount = runningReturnCounts.get(accountId) + 1;
+            runningReturnCounts.set(accountId, newCount);
+            return newCount;
+        } else {
+            runningReturnCounts.set(accountId, 1);
+            return 1;
+        }
+    }
+    for (let i = 0; i < months.length; ++i) {
+        const row = [months[i], 0, 0, 0, 0, 0, 0];
+        const uniqueAccountIds = monthToUniqueAccountIds.get(months[i]);
+        for (const accountId of uniqueAccountIds) {
+            const count = Math.min(incrementReturnCount(accountId), 6);
+            row[row.length - count] += 1;
+        }
+        rows.push(row);
+    }
+
+    const chart = new google.visualization.ColumnChart(element);
+    chart.draw(google.visualization.arrayToDataTable(rows), {
+        title: "# of Users in Convocations (Players & Admins)",
+        chartArea: {
+            width: "50%",
+        },
+        height: 500,
+        hAxis: {
+            title: "Month",
+            showTextEvery: 3,
+        },
+        vAxis: {
+            title: "# of Users",
+        },
+        isStacked: true,
     });
 }
 
@@ -57,27 +142,31 @@ function drawUniqueGMsPerMonth(element, convocations) {
 
     const rows = [[
         "Month",
-        "6+ Month Streak GMs",
-        "5 Month Streak GMs",
-        "4 Month Streak GMs",
-        "3 Month Streak GMs",
-        "2 Month Streak GMs",
-        "No Streak GMs",
+        "6+ Month Returning GMs",
+        "5 Month Returning GMs",
+        "4 Month Returning GMs",
+        "3 Month Returning GMs",
+        "2 Month Returning GMs",
+        "New GMs",
     ]];
     const months = Array.from(monthToUniqueGMs.keys()).sort();
+    const runningGmReturnCounts = new Map();
+    function incrementReturnCount(gm) {
+        if (runningGmReturnCounts.has(gm)) {
+            const newCount = runningGmReturnCounts.get(gm) + 1;
+            runningGmReturnCounts.set(gm, newCount);
+            return newCount;
+        } else {
+            runningGmReturnCounts.set(gm, 1);
+            return 1;
+        }
+    }
     for (let i = 0; i < months.length; ++i) {
         const row = [months[i], 0, 0, 0, 0, 0, 0];
         const uniqueGMs = monthToUniqueGMs.get(months[i]);
         for (const gm of uniqueGMs) {
-            let streakCount = 1;
-            for (let j = i - 1; j > 0 && streakCount < 6; --j) {
-                if (monthToUniqueGMs.get(months[j]).has(gm)) {
-                    streakCount += 1;
-                } else {
-                    break;
-                }
-            }
-            row[row.length - streakCount] += 1;
+            const count = Math.min(incrementReturnCount(gm), 6);
+            row[row.length - count] += 1;
         }
         rows.push(row);
     }
@@ -104,9 +193,12 @@ function drawUniqueGMsPerMonth(element, convocations) {
 function drawRegistrations(element, registrations) {
     const monthsInOrder = Object.keys(registrations).sort();
 
-    const rows = [["Month", "Total # of Registered Users", "# of Newly Registered Users that Day"]]
+    const rows = [[
+        "Month",
+        "Total # of Registered Users",
+        "# of Newly Registered Users that Day",
+    ]];
     let total = 0;
-    console.log(monthsInOrder)
     for (const month of monthsInOrder) {
         const numNewUsers = registrations[month];
         total += numNewUsers;
@@ -136,7 +228,6 @@ function drawRegistrations(element, registrations) {
             {
                 title: "New Users that Day",
                 gridlines: {count: 0},
-                viewWindow: {max: 100},
             }
         ],
     });
