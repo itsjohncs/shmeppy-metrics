@@ -1,5 +1,5 @@
-#[derive(Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub struct UUID(u128);
+#[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Clone, Copy)]
+pub struct UUID(pub u128);
 
 
 fn is_ascii_hex_character(c: u8) -> bool {
@@ -45,7 +45,7 @@ pub fn parse_uuid(raw: &[u8]) -> Option<UUID> {
 }
 
 
-pub fn parse_datetime(raw: &[u8]) -> Option<chrono::DateTime<chrono::Utc>> {
+pub fn parse_timestamp(raw: &[u8]) -> Option<chrono::DateTime<chrono::Utc>> {
     use chrono::offset::TimeZone;
     chrono::Utc.datetime_from_str(
         // The input is fairly trusted, so if this proves to be slow (and I've
@@ -62,12 +62,12 @@ mod tests {
     mod timestamp {
         use chrono::Utc;
         use chrono::offset::TimeZone;
-        use crate::parse::parse_datetime;
+        use crate::parse::parse_timestamp;
 
         #[test]
         fn standard_format() {
             let raw_datetime = b"4/25/2020 9:55:14 PM";
-            let datetime = parse_datetime(raw_datetime);
+            let datetime = parse_timestamp(raw_datetime);
             assert!(datetime.is_some());
             assert_eq!(datetime.unwrap(),
                        Utc.ymd(2020, 4, 25).and_hms(21, 55, 14));
@@ -76,14 +76,14 @@ mod tests {
         #[test]
         fn missing_am_pm() {
             let raw_datetime = b"4/25/2020 9:55:14";
-            let datetime = parse_datetime(raw_datetime);
+            let datetime = parse_timestamp(raw_datetime);
             assert!(datetime.is_none());
         }
 
         #[test]
         fn empty() {
             let raw_datetime = b"";
-            let datetime = parse_datetime(raw_datetime);
+            let datetime = parse_timestamp(raw_datetime);
             assert!(datetime.is_none());
         }
 
@@ -94,7 +94,7 @@ mod tests {
             // this is most certainly not a date. Downside of using Option as
             // a carrier of the error status.
             let raw_datetime = b"\xc3\x28";
-            let datetime = parse_datetime(raw_datetime);
+            let datetime = parse_timestamp(raw_datetime);
             assert!(datetime.is_none());
         }
     }

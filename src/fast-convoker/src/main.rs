@@ -1,13 +1,26 @@
 mod lex;
-use crate::lex::locate_parts;
-
 mod parse;
+mod request;
+
+use std::io::BufRead;
+use std::io::stdin;
+
+use crate::request::RequestCollector;
+use crate::lex::locate_parts;
 
 
 fn main() {
-	let ham = b"shmeppy-1 shmeppy-app: (c722d1d6-86e6-4117-b444-e146b013859d) [INFO - 4/25/2020 9:55:14 PM] Committed 1 operation(s).";
-	let bob = locate_parts(ham);
-    println!("ham {}", bob.unwrap());
+    let mut collector = RequestCollector::new();
+    for maybe_line in stdin().lock().split(b'\n') {
+        let line = maybe_line.unwrap();
+        if let Some(parts) = locate_parts(&line) {
+            collector.update(&parts);
+        }
+    }
+
+    let requests: Vec<_> = collector.into_requests().collect();
+
+    println!("Num requests: {}", requests.len());
 
     // Transform all logs into lists (separated by game ID) of
     // (timespan, user_identifier) tuples. (Vocab: each of these tuples is
