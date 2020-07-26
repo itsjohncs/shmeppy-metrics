@@ -22,16 +22,18 @@ fn main() {
 
     println!("Num requests: {}", requests.len());
 
-    // Transform all logs into lists (separated by game ID) of
-    // (timespan, user_identifier) tuples. (Vocab: each of these tuples is
-    // called a "user presence").
-
-    // Transform each of those lists into a single spet containing the timespans
-    // where N number of users were present.
-
-    // Transform that spet to join any small gaps
-
-    // Transform that spet to remove too-short timespans
-
-    // Print them
+    // * Transform the logs into requests with the information I need.
+    //     * Simultaneously collect all the times when a game was modified and
+    //       create a spet containing "the timespans the game had activity".
+    // * Bucket the timespans of requests sharing (game_id, user_id) into spets
+    //   (these are "user presences").
+    // * Fold each bucket into a single spet containing all the times when N
+    //   presences overlapped for a game.
+    // * Intersect each of these spets with the times when the game had
+    //   activity.
+    // * Join any small gaps in each of these spets.
+    // * Filter out any too-small timespans from these spets.
+    // * Re-associate each spet with the information I need and then print
+    //   them: the contiguous timespans in these final spets are the
+    //   convocations I seek.
 }
