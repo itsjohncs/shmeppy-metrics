@@ -8,16 +8,20 @@ use crate::parse::{parse_timestamp, parse_uuid};
 use crate::parse::UUID;
 
 
+pub type GameId = u64;
+pub type AccountId = u64;
+
+
 #[derive(PartialEq, Eq, Debug)]
 enum Message {
     // Contains game ID
-    StartedGameId(u64),
+    StartedGameId(GameId),
 
     // Contains analytics ID
     AnalyticsId(UUID),
 
     // Contains account_id and is_admin
-    AuthenticatedAs(u64, bool),
+    AuthenticatedAs(AccountId, bool),
 
     Finished,
 }
@@ -52,7 +56,7 @@ fn extract_integer<T: std::str::FromStr>(raw: &[u8]) -> Option<T> {
 }
 
 
-fn extract_account_id_from_old_log(raw: &[u8]) -> Option<u64> {
+fn extract_account_id_from_old_log(raw: &[u8]) -> Option<AccountId> {
     fn is_ascii_hex_character(c: u8) -> bool {
         (b'0' <= c && c <= b'9') || (b'a' <= c && c <= b'f')
     }
@@ -69,7 +73,7 @@ fn extract_account_id_from_old_log(raw: &[u8]) -> Option<u64> {
         std::str::from_utf8_unchecked(&raw[start..end])
     };
 
-    u64::from_str_radix(account_id_str, 16).ok()
+    AccountId::from_str_radix(account_id_str, 16).ok()
 }
 
 
@@ -114,7 +118,7 @@ fn parse_message(raw: &[u8]) -> Option<Message> {
                     (json.get("account")?.get("accountId")?,
                      json.get("isAdmin")?) {
                 Some(AuthenticatedAs(
-                    u64::from_str_radix(raw_account_id.as_str(), 16).ok()?,
+                    AccountId::from_str_radix(raw_account_id.as_str(), 16).ok()?,
                     *is_admin))
             } else {
                 None
@@ -131,21 +135,21 @@ fn parse_message(raw: &[u8]) -> Option<Message> {
 
 
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
-enum UserId {
+pub enum UserId {
     AnalyticsId(UUID),
-    AccountId(u64),
+    AccountId(AccountId),
     Anonymous,
 }
 
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Request {
-    request_id: UUID,
-    start: DateTime<Utc>,
-    end: DateTime<Utc>,
-    game_id: u64,
-    user_id: UserId,
-    is_admin: bool,
+    pub request_id: UUID,
+    pub start: DateTime<Utc>,
+    pub end: DateTime<Utc>,
+    pub game_id: GameId,
+    pub user_id: UserId,
+    pub is_admin: bool,
 }
 
 
@@ -172,9 +176,9 @@ impl Request {
 struct PartialRequest {
     start: Option<DateTime<Utc>>,
     end: Option<DateTime<Utc>>,
-    game_id: Option<u64>,
+    game_id: Option<GameId>,
     analytics_id: Option<UUID>,
-    account_id: Option<u64>,
+    account_id: Option<AccountId>,
     is_admin: Option<bool>,
     // The UUID of the request is associated with this in the hash table, so
     // it's not included here.
@@ -239,6 +243,10 @@ impl RequestCollector {
         self.partial_requests
             .into_iter()
             .filter_map(|(uuid, partial)| Request::from_partial(uuid, &partial))
+    }
+
+    pub fn game_id_for_request(&self, request_id: UUID) -> Option<GameId> {
+        self.partial_requests.get(&request_id)?.game_id
     }
 }
 
