@@ -2,6 +2,9 @@ mod lex;
 mod parse;
 mod request;
 mod activity;
+mod presence;
+mod accumulator;
+mod timespan;
 
 use std::io::BufRead;
 use std::io::stdin;
@@ -11,6 +14,7 @@ use chrono::Duration;
 use crate::request::RequestCollector;
 use crate::lex::locate_parts;
 use crate::activity::ActivityCollector;
+use crate::presence::collect_presences;
 
 
 fn main() {
@@ -32,7 +36,7 @@ fn main() {
         |game_id| request_collector.game_id_for_request(game_id),
         Duration::minutes(30));
 
-    // let all_presences = collect_presences(request_collector.into_requests());
+    let all_presences = collect_presences(request_collector.into_requests());
 
     // let convocations: Vec<Convocations> = Vec::new();
     // for (game_id, presences) in all_presences.iter() {

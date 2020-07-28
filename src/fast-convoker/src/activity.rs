@@ -1,15 +1,13 @@
 use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc, Duration};
-use spet::span::{SimpleSpan, CreatableSpan};
 use spet::vecspet::VecSpet;
 
 use crate::request::GameId;
 use crate::lex::Parts;
 use crate::parse::{UUID, parse_uuid, parse_timestamp};
-
-pub type TimeSpan = SimpleSpan<DateTime<Utc>>;
-
+use crate::accumulator::push_onto_accumulator;
+use crate::timespan::TimeSpan;
 
 
 pub struct ActivityCollector {
@@ -22,21 +20,6 @@ fn is_activity_message(msg: &[u8]) -> bool {
     let expected_suffix = b" operation(s).";
     msg[..expected_prefix.len()] == *expected_prefix &&
         msg[msg.len() - expected_suffix.len()..] == *expected_suffix
-}
-
-
-fn push_onto_accumulator<Key: Ord + Copy, Value>(
-        accumulator: &mut BTreeMap<Key, Vec<Value>>,
-        key: Key,
-        value: Value) {
-    let lst = if let Some(lst) = accumulator.get_mut(&key) {
-        lst
-    } else {
-        accumulator.insert(key, Vec::new());
-        accumulator.get_mut(&key).unwrap()
-    };
-
-    lst.push(value)
 }
 
 
@@ -72,6 +55,7 @@ impl ActivityCollector {
 
         let mut result = BTreeMap::new();
         for (game_id, mut timestamps) in by_game_id {
+            use spet::span::CreatableSpan;
             timestamps.sort_unstable();
             let spans = timestamps.into_iter().map(|timestamp|
                 TimeSpan::new(

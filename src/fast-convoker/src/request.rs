@@ -134,7 +134,7 @@ fn parse_message(raw: &[u8]) -> Option<Message> {
 }
 
 
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Ord, PartialOrd)]
 pub enum UserId {
     AnalyticsId(UUID),
     AccountId(AccountId),
