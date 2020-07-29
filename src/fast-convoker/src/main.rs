@@ -6,15 +6,29 @@ mod presence;
 mod accumulator;
 mod timespan;
 
+use spet::span::Span;
+use std::collections::BTreeSet;
 use std::io::BufRead;
 use std::io::stdin;
 
 use chrono::Duration;
+use spet::vecspet::VecSpet;
+use spet::overlapping::n_overlapping;
 
-use crate::request::RequestCollector;
+use crate::timespan::TimeSpan;
+use crate::request::{RequestCollector, GameId, UserId};
 use crate::lex::locate_parts;
 use crate::activity::ActivityCollector;
 use crate::presence::collect_presences;
+
+
+#[derive(Debug)]
+struct Convocation {
+    game_id: GameId,
+    during: TimeSpan,
+    admins: Vec<UserId>,
+    players: Vec<UserId>,
+}
 
 
 fn main() {
@@ -38,61 +52,60 @@ fn main() {
 
     let all_presences = collect_presences(request_collector.into_requests());
 
-    // let convocations: Vec<Convocations> = Vec::new();
-    // for (game_id, presences) in all_presences.iter() {
-    //     // An iterator of timespans where a convocation was occurring
-    //     let convocations_during =
-    //         // We start with the set containing all the times N users were
-    //         // present (check out the documentation for n_overlapping to see
-    //         // how this translates to set operations if you like thinking about
-    //         // all this in terms of sets like me).
-    //         n_overlapping(2, presences.map(|presence| presence.spet))
-    //             // Cut out any time users were present but nothing was
-    //             // happening in the game. This prevents users who leave their
-    //             // computers on all the time from messing with my analytics.
-    //             .intersection(
-    //                 activity_collector.active_during(game_id,
-    //                                                  Duration::minutes(30)))
-    //             // Join any "small" gaps between timespans. This is an attempt
-    //             // to cut down on noise.
-    //             .filter_complement(|start, end| match (start, end) {
-    //                 (None, _) => true,
-    //                 (_, None) => true,
-    //                 (Some(a), Some(b)) => b - a > Duration::minutes(90),
-    //             })
-    //             // We now leave the land of spets and turn into an iterator
-    //             // over timespans.
-    //             .into_iter()
-    //             // Filter out short timespans
-    //             .filter(|span| span.end - span.start > Duration::minutes(40));
+    let mut convocations: Vec<Convocation> = Vec::new();
+    for (game_id, presences) in all_presences.iter() {
+        // An iterator of timespans where a convocation was occurring
+        let convocations_during =
+            // We start with the set containing all the times N users were
+            // present (check out the documentation for n_overlapping to see
+            // how this translates to set operations if you like thinking about
+            // all this in terms of sets like me).
+            n_overlapping(2, presences.iter().map(|presence| &presence.spet))
+                // Cut out any time users were present but nothing was
+                // happening in the game. This prevents users who leave their
+                // computers on all the time from messing with my analytics.
+                .intersection(
+                    game_id_to_activity.get(game_id)
+                                       .unwrap_or(&VecSpet::default()))
+                // Join any "small" gaps between timespans. This is an attempt
+                // to cut down on noise.
+                .filter_gaps(|start, end| *end - *start > Duration::minutes(90))
+                // We now leave the land of spets and turn into an iterator
+                // over timespans.
+                .into_iter()
+                // Filter out short timespans
+                .filter(|span| *span.end() - *span.start() > Duration::minutes(40));
 
-    //     // During these set operations we've lost the information of who is
-    //     // participating in each convocation. Now we'll go and re-figure that
-    //     // out.
-    //     for timespan in convocations_during {
-    //         let mut admins: BTreeSet<AccountId> = BTreeSet::new();
-    //         let mut players: BTreeSet<AccountId> = BTreeSet::new();
-    //         for presence in presences {
-    //             if presence.spet.intersects_span(&timespan) {
-    //                 if presence.is_admin {
-    //                     admins.insert(presence.account_id);
-    //                     players.remove(presence.account_id);
-    //                 } else if !admins.contains(presence.account_id) {
-    //                     players.insert(presence.account_id);
-    //                 }
-    //             }
-    //         }
+        // During these set operations we've lost the information of who is
+        // participating in each convocation. Now we'll go and re-figure that
+        // out.
+        for timespan in convocations_during {
+            let mut admins: BTreeSet<UserId> = BTreeSet::new();
+            let mut players: BTreeSet<UserId> = BTreeSet::new();
+            for presence in presences {
+                let spet_span = VecSpet::from_sorted_iter(vec![timespan]);
+                if !presence.spet.intersection(&spet_span).is_empty() {
+                    if presence.is_admin {
+                        admins.insert(presence.user_id);
+                        players.remove(&presence.user_id);
+                    } else if !admins.contains(&presence.user_id) {
+                        players.insert(presence.user_id);
+                    }
+                }
+            }
 
-    //         if !admins.is_empty() {
-    //             convocations.push(Convocation {
-    //                 game_id,
-    //                 during: timespan,
-    //                 admins: Vec::from(admins),
-    //                 players: Vec::from(players),
-    //             });
-    //         }
-    //     }
-    // }
+            if !admins.is_empty() {
+                convocations.push(Convocation {
+                    game_id: *game_id,
+                    during: timespan,
+                    admins: admins.into_iter().collect(),
+                    players: players.into_iter().collect(),
+                });
+            }
+        }
+    }
+
+    println!("{:?}", convocations);
     // * Transform the logs into requests with the information I need.
     //     * Simultaneously collect all the times when a game was modified and
     //       create a spet containing "the timespans the game had activity".
