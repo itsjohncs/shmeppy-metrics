@@ -1,5 +1,5 @@
+use std::io::stdin;
 use std::io::BufRead;
-use std::env::args;
 use std::str::{FromStr, from_utf8};
 use std::collections::BTreeMap;
 use std::collections::HashSet;
@@ -78,25 +78,21 @@ fn main() {
     // Stores any "complete registration" request IDs that we've seen
     let mut complete_registration_requests: HashSet<[u8; 32]> = HashSet::new();
 
-    for file_path in args().skip(1) {
-        let file = std::fs::File::open(&file_path).expect(
-            &format!("Can't open {}", file_path));
-        for maybe_line in std::io::BufReader::new(file).split(b'\n') {
-            let line = maybe_line.unwrap();
-            if let Some(id) = extract_request_id(&line) {
-                if complete_registration_requests.contains(&id) {
-                    if let Some(code) = maybe_get_request_status(&line) {
-                        complete_registration_requests.remove(&id);
+    for maybe_line in stdin().lock().split(b'\n') {
+        let line = maybe_line.unwrap();
+        if let Some(id) = extract_request_id(&line) {
+            if complete_registration_requests.contains(&id) {
+                if let Some(code) = maybe_get_request_status(&line) {
+                    complete_registration_requests.remove(&id);
 
-                        if code == 200 {
-                            increment_registration_count(
-                                &mut registration_counts,
-                                &extract_date(&line).unwrap());
-                        }
+                    if code == 200 {
+                        increment_registration_count(
+                            &mut registration_counts,
+                            &extract_date(&line).unwrap());
                     }
-                } else if is_start_of_registration_request(&line) {
-                    complete_registration_requests.insert(id);
                 }
+            } else if is_start_of_registration_request(&line) {
+                complete_registration_requests.insert(id);
             }
         }
     }
