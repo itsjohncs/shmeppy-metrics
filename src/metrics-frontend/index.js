@@ -4,7 +4,11 @@ function main() {
             .then(function(r) {
                 return r.json()
             }),
-        fetch("data/registrations.json?cachebust")
+        fetch("data/registrations.json")
+            .then(function(r) {
+                return r.json()
+            }),
+        fetch("data/active-users.json?ham")
             .then(function(r) {
                 return r.json()
             }),
@@ -16,7 +20,7 @@ function main() {
                 reject(e);
             }
         }),
-    ]).then(function([convocations, registrations]) {
+    ]).then(function([convocations, registrations, activeUsers]) {
         drawUniqueGMsPerMonth(
             document.getElementById("chart_uniqueGMsPerMonth"),
             convocations);
@@ -26,6 +30,9 @@ function main() {
         drawRegistrations(
             document.getElementById("chart_registrations"),
             registrations);
+        drawActiveUsers(
+            document.getElementById("chart_activeUsers"),
+            activeUsers);
     });
 }
 
@@ -230,5 +237,64 @@ function drawRegistrations(element, registrations) {
                 gridlines: {count: 0},
             }
         ],
+    });
+}
+
+
+function drawActiveUsers(element, usersByMonth) {
+    const rows = [[
+        "Month",
+        "24+ hours",
+        "12+ hours",
+        "6+ hours",
+        "3+ hours",
+        "1+ hours",
+        "<1 hour",
+    ]];
+
+    function hours(n) {
+        return n * 60 * 60;
+    }
+
+    const thresholds = [
+        Number.MAX_VALUE,
+        hours(24),
+        hours(12),
+        hours(6),
+        hours(3),
+        hours(1),
+        0,
+    ];
+    function getRowIndex(seconds) {
+        for (let i = thresholds.length - 2; i >= 0; --i) {
+            if (seconds < thresholds[i]) {
+                return i + 1;
+            }
+        }
+    }
+
+    for (const [month, users] of Object.entries(usersByMonth)) {
+        const row = [month, 0, 0, 0, 0, 0, 0];
+        for (const seconds of Object.values(users)) {
+            row[getRowIndex(seconds)] += 1;
+        }
+        rows.push(row);
+    }
+
+    const chart = new google.visualization.ColumnChart(element);
+    chart.draw(google.visualization.arrayToDataTable(rows), {
+        title: "# of GMs in Any Games (during Game Activity)",
+        chartArea: {
+            width: "50%",
+        },
+        height: 500,
+        hAxis: {
+            title: "Month",
+            showTextEvery: 3,
+        },
+        vAxis: {
+            title: "# of GMs",
+        },
+        isStacked: true,
     });
 }

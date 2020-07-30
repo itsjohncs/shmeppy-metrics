@@ -162,9 +162,9 @@ impl Request {
             game_id: partial.game_id?,
             is_admin: partial.is_admin?,
             user_id: match (partial.account_id, partial.analytics_id) {
+                (Some(account_id), _) => UserId::AccountId(account_id),
                 (None, Some(analytics_id)) =>
                     UserId::AnalyticsId(analytics_id),
-                (Some(account_id), _) => UserId::AccountId(account_id),
                 _ => UserId::Anonymous
             },
         })

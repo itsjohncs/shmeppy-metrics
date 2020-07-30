@@ -32,7 +32,7 @@ build/site/index.js: src/metrics-frontend/index.js | build/site
 build/site/data/registrations.json build/site/data/convocations.json: $(shell find build/raw-logs) build/process-logs
 	env "PATH=$(shell pwd)/build/:$(PATH)" build/process-logs build/site/data build/raw-logs/
 
-build/process-logs: src/process-logs.sh build/fast-convoker build/count-registrations
+build/process-logs: src/process-logs.sh build/fast-convoker build/count-registrations build/active-users
 	ln -fs $(shell pwd)/$< $@
 
 build/site/data: | build/site
@@ -48,8 +48,11 @@ build/site: | build
 build/fast-convoker: src/fast-convoker/target/release/fast-convoker | build
 	ln -fs $(shell pwd)/$< $@
 
-src/fast-convoker/target/release/fast-convoker: $(shell find src/fast-convoker/src) src/fast-convoker/Cargo.toml src/fast-convoker/Cargo.lock
-	cd src/fast-log-utils; cargo build --release
+build/active-users: src/fast-convoker/target/release/active-users
+	ln -fs $(shell pwd)/$< $@
+
+src/fast-convoker/target/release/fast-convoker src/fast-convoker/target/release/active-users: $(shell find src/fast-convoker/src) src/fast-convoker/Cargo.toml src/fast-convoker/Cargo.lock
+	cd src/fast-convoker; cargo build --release
 	touch -c $@
 
 

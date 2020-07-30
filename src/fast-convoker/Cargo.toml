@@ -13,3 +13,11 @@ memchr = "2.3.0"
 serde = "1.0"
 serde_json = "1.0"
 spet = { git = "file:///Users/johnsullivan/personal/spet/" }
+
+[[bin]]
+name = "fast-convoker"
+path = "src/convoker.rs"
+
+[[bin]]
+name = "active-users"
+path = "src/activeusers.rs"
