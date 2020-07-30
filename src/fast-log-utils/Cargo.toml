@@ -11,17 +11,5 @@ memchr = "2.3.0"
 memmem = "0.1.1"
 
 [[bin]]
-name = "get-logs-within"
-path = "src/get_logs_within.rs"
-
-[[bin]]
-name = "get-range"
-path = "src/get_range.rs"
-
-[[bin]]
 name = "count-registrations"
 path = "src/count_registrations.rs"
-
-[[bin]]
-name = "filter-bad-versions"
-path = "src/filter_bad_versions.rs"
