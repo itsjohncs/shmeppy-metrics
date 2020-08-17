@@ -94,6 +94,14 @@ fn main() {
                     // Cut out any time users were present but nothing was
                     // happening in the game. This prevents users who leave their
                     // computers on all the time from messing with my analytics.
+                    // Note: this is the same as doing it to each presence's
+                    // spet beforehand, because n_overlapping is equivalent to
+                    // (A & B) | (A & C) | (B & C) (for n = 2 over 3 elements,
+                    // but hopefully the pattern is clear). So intersecting the
+                    // result of that is the same as intersecting each
+                    // individual product (distributive laws of set operations
+                    // loosely match those of multiplication and addition
+                    // here).
                     .intersection(
                         game_id_to_activity.get(game_id)
                                            .unwrap_or(&VecSpet::default()))

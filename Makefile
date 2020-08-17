@@ -29,7 +29,7 @@ build/site/index.js: src/metrics-frontend/index.js | build/site
 #############
 # site data #
 #############
-build/site/data/registrations.json build/site/data/convocations.json: $(shell find build/raw-logs) build/process-logs
+build/site/data/registrations.json build/site/data/convocations.json build/site/data/active-users.json: $(shell find build/raw-logs) build/process-logs
 	env "PATH=$(shell pwd)/build/:$(PATH)" build/process-logs build/site/data build/raw-logs/
 
 build/process-logs: src/process-logs.sh build/fast-convoker build/count-registrations build/active-users

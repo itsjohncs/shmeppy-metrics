@@ -30,9 +30,37 @@ function main() {
         drawRegistrations(
             document.getElementById("chart_registrations"),
             registrations);
-        drawActiveUsers(
-            document.getElementById("chart_activeUsers"),
-            activeUsers);
+
+        function hours(n) {
+            return n * 60 * 60;
+        }
+
+        drawActiveUsersWindow({
+            element: document.getElementById("chart_activeUsers"),
+            usersByDay: activeUsers,
+            daysInWindow: 30,
+            buckets: [
+                [hours(24), "24+ hours"],
+                [hours(12), "12+ hours"],
+                [hours(6), "6+ hours"],
+                [hours(3), "3+ hours"],
+                [hours(1), "1+ hours"],
+                [0, "<1 hour"],
+            ],
+        });
+        drawActiveUsersWindow({
+            element: document.getElementById("chart_activeUsersWindow"),
+            usersByDay: activeUsers,
+            daysInWindow: 7,
+            buckets: [
+                [hours(12), "12+ hours"],
+                [hours(6), "6+ hours"],
+                [hours(3), "3+ hours"],
+                [hours(2), "2+ hours"],
+                [hours(1), "1+ hours"],
+                [0, "<1 hour"],
+            ]
+        });
     });
 }
 
@@ -241,15 +269,12 @@ function drawRegistrations(element, registrations) {
 }
 
 
-function drawActiveUsers(element, usersByMonth) {
+function drawActiveUsersWindow({element, usersByDay, daysInWindow, buckets}) {
     const rows = [[
-        "Month",
-        "24+ hours",
-        "12+ hours",
-        "6+ hours",
-        "3+ hours",
-        "1+ hours",
-        "<1 hour",
+        {label: "Month", type: "date"},
+        ...buckets.map(function([_, label]) {
+            return {label, type: "number"};
+        }),
     ]];
 
     function hours(n) {
@@ -258,12 +283,9 @@ function drawActiveUsers(element, usersByMonth) {
 
     const thresholds = [
         Number.MAX_VALUE,
-        hours(24),
-        hours(12),
-        hours(6),
-        hours(3),
-        hours(1),
-        0,
+        ...buckets.map(function([threshold, _]) {
+            return threshold;
+        }),
     ];
     function getRowIndex(seconds) {
         for (let i = thresholds.length - 2; i >= 0; --i) {
@@ -273,24 +295,67 @@ function drawActiveUsers(element, usersByMonth) {
         }
     }
 
-    for (const [month, users] of Object.entries(usersByMonth)) {
-        const row = [month, 0, 0, 0, 0, 0, 0];
-        for (const seconds of Object.values(users)) {
+    for (const anchorDay of Object.keys(usersByDay)) {
+        // No month before this really had any usage
+        if (new Date(anchorDay) < new Date("2019-06-01")) {
+            continue;
+        }
+
+        const tooRecently = new Date();
+        tooRecently.setDate(tooRecently.getDate() - 2);
+        if (new Date(anchorDay) >= tooRecently) {
+            continue;
+        }
+
+        const endDay = new Date(anchorDay);
+        const startDay = new Date(anchorDay);
+        startDay.setDate(startDay.getDate() - daysInWindow);
+        const row = [new Date(anchorDay), 0, 0, 0, 0, 0, 0];
+
+        const usersToTotalTime = new Map();
+        for (const [day, users] of Object.entries(usersByDay)) {
+            const dt = new Date(day);
+            if (dt < startDay || dt > endDay) {
+                continue;
+            }
+
+            for (const [accountId, seconds] of Object.entries(users)) {
+                if (usersToTotalTime.has(accountId)) {
+                    usersToTotalTime.set(
+                        accountId, usersToTotalTime.get(accountId) + seconds);
+                } else {
+                    usersToTotalTime.set(accountId, seconds);
+                }
+            }
+        }
+
+        for (const seconds of usersToTotalTime.values()) {
             row[getRowIndex(seconds)] += 1;
         }
         rows.push(row);
     }
 
-    const chart = new google.visualization.ColumnChart(element);
+    rows.sort(function(a, b) {
+        const aDt = new Date(a[0]);
+        const bDt = new Date(b[0]);
+        if (aDt < bDt) {
+            return -1;
+        } else if (aDt > bDt) {
+            return 1;
+        } else {
+            return 0;
+        }
+    });
+
+    const chart = new google.visualization.SteppedAreaChart(element);
     chart.draw(google.visualization.arrayToDataTable(rows), {
-        title: "# of GMs in Any Games (during Game Activity)",
+        title: `# of GMs in Any Games (during Game Activity), ${daysInWindow}-day window`,
         chartArea: {
             width: "50%",
         },
         height: 500,
         hAxis: {
-            title: "Month",
-            showTextEvery: 3,
+            title: "Date",
         },
         vAxis: {
             title: "# of GMs",
