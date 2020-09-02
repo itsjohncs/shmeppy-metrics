@@ -29,10 +29,10 @@ build/site/index.js: src/metrics-frontend/index.js | build/site
 #############
 # site data #
 #############
-build/site/data/registrations.json build/site/data/convocations.json build/site/data/active-users.json: $(shell find build/raw-logs) build/process-logs
+build/site/data/registrations.json build/site/data/convocations.json build/site/data/active-users.json build/site/data/event-counts.json: $(shell find build/raw-logs) build/process-logs
 	env "PATH=$(shell pwd)/build/:$(PATH)" build/process-logs build/site/data build/raw-logs/
 
-build/process-logs: src/process-logs.sh build/fast-convoker build/count-registrations build/active-users
+build/process-logs: src/process-logs.sh build/fast-convoker build/count-registrations build/active-users build/count-events
 	ln -fs $(shell pwd)/$< $@
 
 build/site/data: | build/site
@@ -56,13 +56,16 @@ src/fast-convoker/target/release/fast-convoker src/fast-convoker/target/release/
 	touch -c $@
 
 
-###############################################
-# fast-log-utils (get-logs-within, get-range) #
-###############################################
+##################
+# fast-log-utils #
+##################
 build/count-registrations: src/fast-log-utils/target/release/count-registrations | build
 	ln -fs $(shell pwd)/$< $@
 
-src/fast-log-utils/target/release/get-logs-within src/fast-log-utils/target/release/get-range src/fast-log-utils/target/release/count-registrations src/fast-log-utils/target/release/filter-bad-versions: $(shell find src/fast-log-utils/src) src/fast-log-utils/Cargo.toml src/fast-log-utils/Cargo.lock
+build/count-events: src/fast-log-utils/target/release/count-events | build
+	ln -fs $(shell pwd)/$< $@
+
+src/fast-log-utils/target/release/count-registrations src/fast-log-utils/target/release/count-events: $(shell find src/fast-log-utils/src) src/fast-log-utils/Cargo.toml src/fast-log-utils/Cargo.lock
 	cd src/fast-log-utils; cargo build --release
 	touch -c $@
 

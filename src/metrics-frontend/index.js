@@ -12,6 +12,10 @@ function main() {
             .then(function(r) {
                 return r.json()
             }),
+        fetch("data/event-counts.json")
+            .then(function(r) {
+                return r.json()
+            }),
         new Promise(function(resolve, reject) {
             try {
                 google.charts.load("current", {packages: ["corechart", "bar"]});
@@ -20,7 +24,7 @@ function main() {
                 reject(e);
             }
         }),
-    ]).then(function([convocations, registrations, activeUsers]) {
+    ]).then(function([convocations, registrations, activeUsers, eventCounts]) {
         drawUniqueGMsPerMonth(
             document.getElementById("chart_uniqueGMsPerMonth"),
             convocations);
@@ -61,6 +65,10 @@ function main() {
                 [0, "<1 hour"],
             ]
         });
+
+        drawEventCounts(
+            document.getElementById("chart_eventCounts"),
+            eventCounts);
     });
 }
 
@@ -361,5 +369,69 @@ function drawActiveUsersWindow({element, usersByDay, daysInWindow, buckets}) {
             title: "# of GMs",
         },
         isStacked: true,
+    });
+}
+
+
+function drawEventCounts(element, eventCounts) {
+    const rows = [[
+        {label: "Day", type: "date"},
+        ...Object.entries(eventCounts).map(function([eventName, _]) {
+            return {label: eventName, type: "number"};
+        }),
+    ]];
+
+    const allRawDates = new Set();
+    for (const eventData of Object.values(eventCounts)) {
+        for (const rawDate of Object.keys(eventData)) {
+            allRawDates.add(rawDate);
+        }
+    }
+
+    const sortedRawDates = Array.from(allRawDates).sort(function(a, b) {
+        const aDt = new Date(a);
+        const bDt = new Date(b);
+        if (aDt < bDt) {
+            return -1;
+        } else if (aDt > bDt) {
+            return 1;
+        } else {
+            return 0;
+        }
+    });
+
+    for (const rawDate of sortedRawDates) {
+        const date = new Date(rawDate);
+        if (date < new Date("2019-06-01")) {
+            continue;
+        }
+        const row = [date];
+
+        // I use Object.entries here (and above when declaring the rows)
+        // because I'm being overly paranoid and worrying that Object.values
+        // an Object.keys could iterate in slightly different orderings
+        // sometimes... (even though that's probably not true)
+        for (const [_, eventData] of Object.entries(eventCounts)) {
+            row.push(eventData[rawDate] || 0);
+        }
+
+        rows.push(row);
+    }
+
+    console.log(rows);
+
+    const chart = new google.visualization.LineChart(element);
+    chart.draw(google.visualization.arrayToDataTable(rows), {
+        title: "Event Counts",
+        chartArea: {
+            width: "50%",
+        },
+        height: 500,
+        hAxis: {
+            title: "Date",
+        },
+        vAxis: {
+            title: "Count",
+        },
     });
 }
