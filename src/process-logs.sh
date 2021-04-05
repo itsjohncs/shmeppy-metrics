@@ -16,8 +16,9 @@ TEMP_CONVOCATIONS="$(mktemp)"
 TEMP_ACTIVE_USERS="$(mktemp)"
 TEMP_EVENTS="$(mktemp)"
 
-find "$LOGS_DIR" -name '*.log' -print0 |
+find "$LOGS_DIR" -name '*.log.gz' -print0 |
 	xargs -0 pv |
+	gzip --decompress |
 	tee >(count-registrations > "$TEMP_REGISTRATIONS") \
 		>(fast-convoker > "$TEMP_CONVOCATIONS") \
 		>(active-users > "$TEMP_ACTIVE_USERS") \
