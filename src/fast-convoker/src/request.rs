@@ -114,12 +114,21 @@ fn parse_message(raw: &[u8]) -> Option<Message> {
             use serde_json::Value;
             
             let json: Value = serde_json::from_slice(remainder).ok()?;
-            if let (Value::String(raw_account_id), Value::Bool(is_admin)) =
-                    (json.get("account")?.get("accountId")?,
-                     json.get("isAdmin")?) {
-                Some(AuthenticatedAs(
-                    AccountId::from_str_radix(raw_account_id.as_str(), 16).ok()?,
-                    *is_admin))
+
+            let account_id =
+                if let Value::String(raw_account_id) =
+                        json.get("account")?.get("accountId")? {
+                    AccountId::from_str_radix(raw_account_id.as_str(), 16).ok()?
+                } else {
+                    return None;
+                };
+
+            if let Some(Value::Bool(is_admin)) = json.get("isAdmin") {
+                Some(AuthenticatedAs(account_id, *is_admin))
+            } else if let Some(Value::String(access_level)) =
+                    json.get("accessLevel") {
+                let is_admin = *access_level == "ADMIN";
+                Some(AuthenticatedAs(account_id, is_admin))
             } else {
                 None
             }
@@ -434,6 +443,17 @@ mod tests {
                 // There's nothing there
                 parse_message(br#"Client added to client DB: "#),
                 None);
+        }
+
+        #[test]
+        fn authenticated_as_new_log() {
+            assert_eq!(
+                parse_message(br#"Client added to client DB: {"gameId":2323,"clientId":2963,"account":{"accountId":"df547ed38259c164","displayName":"Foobar"},"initialLastSeenIndex":null,"accessLevel":"PLAYER","lastPong":1617331546939}"#),
+                Some(AuthenticatedAs(0xdf547ed38259c164, false)));
+
+            assert_eq!(
+                parse_message(br#"Client added to client DB: {"gameId":2323,"clientId":2963,"account":{"accountId":"df547ed38259c164","displayName":"Foobar"},"initialLastSeenIndex":null,"accessLevel":"ADMIN","lastPong":1617331546939}"#),
+                Some(AuthenticatedAs(0xdf547ed38259c164, true)));
         }
 
         #[test]
